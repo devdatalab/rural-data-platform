@@ -126,3 +126,12 @@ save $iec/rural_platform/canal_data.dta, replace
 /* save COC dataset */
 //save $iec/rural_platform/coc_data.dta, replace
 
+
+/***********************/
+/* District aggregates */
+/***********************/
+
+/* we need district collapses for the shrid-level data above. */
+
+/* output location: */
+//save $iec/rural_platform/district_data.dta, replace
