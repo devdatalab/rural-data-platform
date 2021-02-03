@@ -57,8 +57,7 @@ rule create_shrid_district_portal_data:
     output:
         f'{IEC}/rural_platform/shrid_data.dta',
         f'{IEC}/rural_platform/district_data.dta'
-    shell:
-        f'stata -b {CODE}/b/create_shrid_district_portal_data.do'
+    shell: f'stata -b {CODE}/b/create_shrid_district_portal_data.do'
 
 # creation of geojson from tabular district and shrid data
 rule shrid_dist_to_geojson:
@@ -70,20 +69,16 @@ rule shrid_dist_to_geojson:
     output:
         f'{IEC}/rural_platform/district.geojson',
         f'{IEC}/rural_platform/shrid.geojson'
-    conda:
-        'config/portal_spatial.yaml'
-    shell:
-        f'python {CODE}/b/shrid_dist_to_geojson.py '
+    conda: 'config/portal_spatial.yaml'
+    shell: f'python {CODE}/b/shrid_dist_to_geojson.py '
 
 # creation of vector tileset from geojson
 rule create_vector_tileset:
     input:
         rules.shrid_dist_to_geojson.output,
         f'{CODE}/b/create_vector_tileset.sh'
-    output:
-        f'{TMP}/rural_portal_data.mbtiles'
-    shell:
-        '{CODE}/b/create_vector_tileset.sh {output} {rules.shrid_dist_to_geojson.output}'
+    output: f'{TMP}/rural_portal_data.mbtiles'
+    shell: '{CODE}/b/create_vector_tileset.sh {output} {rules.shrid_dist_to_geojson.output}'
 
 # upload of mbtiles to mapbox studio
 rule push_vector_tileset:
