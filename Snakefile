@@ -90,6 +90,16 @@ rule push_vector_tileset:
     shell: f'python {CODE}/b/push_vector_tileset.py --file {rules.create_vector_tileset.output} --token {MBTOKEN} > {{log}}'
 
 
+########
+# TODO #
+########
+
+# push_public_data.py - take all atlas data as well as all additional data (e.g. CoC) and:
+#  - zip sensibly
+#  - push to AWS for download by users
+
+
+
 ############
 # COMMANDS #
 ############
