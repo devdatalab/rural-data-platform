@@ -95,8 +95,12 @@ merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) ke
 /* merge in mic */
 merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
 
+/* bring in shrid names to be passed into the web app */
+merge 1:1 shrid using $shrug/keys/shrug_names, keepusing(place_name) nogen
+
 /* order the merge variables at the end */
 order _m*, last
+order shrid place_name, first
 
 /* save the data */
 save $iec/rural_platform/shrid_data.dta, replace
@@ -132,6 +136,9 @@ save $iec/rural_platform/canal_data.dta, replace
 /***********************/
 
 /* we need district collapses for the shrid-level data above. */
+
+/* be sure that district names exist in a variable called district_name */
+/* please rename pc11_district_id to pc11_d_id to save a step on the shapefile merge */
 
 /* output location: */
 //save $iec/rural_platform/district_data.dta, replace
