@@ -1,0 +1,26 @@
+---
+# config file for rural data portal
+
+# define globals shared across Python and Stata
+globals:
+    code: ~/ddl/rural-data-platform
+    data: ~/iec/rural_platform
+    shrug: ~/iec1/shrug
+    ag: ~/iec/ag
+    minor: ~/iec/minor
+    mb_token: sk.eyJ1IjoiZGV2ZGF0YWxhYiIsImEiOiJjazR0MHdpd3cxZnF3M21sMWFkYnJ6YWthIn0.on65xUM5lg9Ww_PSbWo9eA
+    statelist: ['andhrapradesh', 'jharkhand', 'gujarat']
+
+    # NOTE: the $TMP global refers to the environment variable, not the $tmp Stata global.
+    data_out: ${TMP}
+
+# define Stata programs to be run for this project
+stata: 
+       do ~/ddl/mining-economics/minec_programs.do
+
+# list folders with Python functions to be added to the python path for easy use
+python: 
+    ~/ddl/tools/py/geospatialtools
+
+    
+
