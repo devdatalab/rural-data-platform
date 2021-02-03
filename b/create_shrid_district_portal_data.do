@@ -98,9 +98,14 @@ merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_d
 /* bring in shrid names to be passed into the web app */
 merge 1:1 shrid using $shrug/keys/shrug_names, keepusing(place_name) nogen
 
+/* drop unnecessary vars - keep code for merge vars above for future debugging, but we don't want them in the vector tileset */
+drop pc11_state_id pc11_district_id _m*
+
 /* order the merge variables at the end */
-order _m*, last
 order shrid place_name, first
+
+/* TEMP: drop more vars to cut down on file size */
+keep shrid place_name pc11_vd* ec13_s* evi_delta_k_*_ln mean_maize_hrf dist_km_canal mic5_dt_no_nrg_epump
 
 /* save the data */
 save $iec/rural_platform/shrid_data.dta, replace
@@ -118,17 +123,6 @@ drop year_start_pdf year_completed_pdf year_approval_pdf _merge
 
 /* save canal-level dataset */
 save $iec/rural_platform/canal_data.dta, replace
-
-
-/***********************/
-/* Cost of Cultivation */
-/***********************/
-
-/* cost of cultivation: agricultural production, prices, and input usage data for 2,073 villages */
-// use
-
-/* save COC dataset */
-//save $iec/rural_platform/coc_data.dta, replace
 
 
 /***********************/
