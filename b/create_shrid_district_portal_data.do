@@ -1,6 +1,9 @@
 /* assemble data for agricultural rural development platform */
 
-/* pc11: Agricultural power supply and other infrastructure,  Irrigation and agricultural areas under cultivationK */
+/* define variable list to be kept for smaller mapping datasets */
+global tilesetvars pc11_vd* ec13_emp_all ec13_agro_share ec13_storage_share evi_delta_k_*_ln gaez_maize_lrf dist_km_canal
+
+/* pc11: Agricultural power supply and other infrastructure,  Irrigation and agricultural areas under cultivation */
 /* open pca */
 use $shrug/data/shrug_pc11_pca, clear
 
@@ -13,27 +16,32 @@ label var pc11_vd_land_ag_tot "total agricultural land"
 drop pc11_vd_land_misc_trcp pc11_vd_land_nt_swn
 
 /* keep shrid and desired variables */
-keep shrid pc11_vd_land_src_irr pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot
+keep shrid pc11_vd_land_src_irr pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot _m_vd
 
 /* ec13: Employment in agro-processing and warehousing/storage */
-merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s8 ec13_s9 ec13_s10 ec13_s59)  gen(_m_ec13)
-
-/* the above agro-processing selects the "grains" and "other" subcategories.
-   to include livestock (dairy, meat) and beverages (alcohol) keep the following:
-   ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s11 ec13_s59   
-   one last one you may want is wholesale of ag. raw materials and live animals: ec13_s43
-*/
+merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s11 ec13_s59 ec13_emp_all) gen(_m_ec13)
 
 /* add NIC04 descriptions to labels */
+lab var ec13_s5 "Production, processing and preserving of meat and meat products"
+lab var ec13_s6 "Manufacture of vegetable and animal oils and fats"
+lab var ec13_s7 "Manufacture of dairy product"
 lab var ec13_s8 "Manufacture grain mill and starch products"
 lab var ec13_s9 "Manufacture of prepared animal feeds"
 lab var ec13_s10 "Manufacture of nuts, sugar, noodles, and other foods"
+lab var ec13_s11 "Manufacture of beverages (mostly alcohol)"
 lab var ec13_s59 "Storage and warehousing"
-cap lab var ec13_s5 "Production, processing and preserving of meat and meat products"
-cap lab var ec13_s6 "Manufacture of vegetable and animal oils and fats"
-cap lab var ec13_s7 "Manufacture of dairy product"
-cap lab var ec13_s11 "Manufacture of beverages (mostly alcohol)"
 cap lab var ec13_s43 "Wholesale of agricultural raw materials and live animals"
+
+/* calculate total agroprocessing employment */
+gen ec13_agro_share = ec13_s5 + ec13_s6 + ec13_s7 + ec13_s8 + ec13_s9 + ec13_s10 + ec13_s11
+
+/* calculate agroprocessing as a share of total employment */
+replace ec13_agro_share = ec13_agro_share / ec13_emp_all
+lab var ec13_agro_share "share of total employment in agroprocessing"
+
+/* calculate storage and warehouse services as a share of total employment */
+gen ec13_storage_share =  ec13_s59 / ec13_emp_all
+lab var ec13_storage_share "share of total employment in storage and warehousing"
 
 /* secc: Share of workers/households working in agriculture */
 merge 1:1 shrid using $shrug/data/shrug_secc, keepusing(nco2d_cultiv_share) gen(_m_secc)
@@ -76,6 +84,37 @@ merge 1:1 shrid using $ag/gaez/high-rain-fed, gen(_m_hrf) keepusing(*mean*)
 merge 1:1 shrid using $ag/gaez/low-rain-fed, gen(_m_lrf) keepusing(*mean*)
 merge 1:1 shrid using $ag/gaez/intermediate-gravity, gen(_m_irf) keepusing(*mean*)
 
+/* get all the gaez variables just merged in */
+qui ds mean_*
+local gaez_vars = "`r(varlist)'"
+
+/* rename gaez variables to be clearer */
+foreach var in `gaez_vars' {
+  local i = subinstr("`var'", "mean", "gaez", .)
+  ren `var' `i'
+
+  /* isolate the crop name */
+  local p0 = strpos("`var'", "_") + 1
+  local name = substr("`var'", `p0', .)
+  local p1 = strpos("`name'", "_") 
+  local crop = substr("`name'", 1, `p1' - 1)
+
+  /* get the last 3 letters of the variable */
+  local suffix = substr("`name'", `p1' + 1, .)
+
+  /* generate inputs and rainfall descriptors from suffix */
+  if "`suffix'" == "hrf" local rainfall "rain-fed"
+  if "`suffix'" == "lrf" local rainfall "rain-fed"
+  if "`suffix'" == "igf" local rainfall "gravity irrigated"
+
+  if "`suffix'" == "hrf" local inputs "high inputs"
+  if "`suffix'" == "lrf" local inputs "low inputs"
+  if "`suffix'" == "igf" local inputs "intermediate inputs"
+
+  /* add a label */
+  label var `i' "potential `crop' production (t/ha): `rainfall', `inputs'"
+}
+
 /* canals and command areas: proximity to major canals and command areas, WRIS */
 merge 1:1 shrid using $minor/distances/shrid_distances, gen(_m_dist) keepusing(dist_km_river dist_km_canal)
 lab var dist_km_river "distance to nearest river (km)"
@@ -88,27 +127,23 @@ lab var dist_km_command_area "distance to nearest command area (km)"
 ren shrid_comm_overlap percent_in_command_area
 lab var percent_in_command_area "percent of village area inside command area"
 
-/* minor irrigation census: irrigation by type - variables unlabeld, need some description here*/
-/* merge in the pc11 state and district variables */
-merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) keepusing(pc11_state_id pc11_district_id) nogen
-
-/* merge in mic */
-merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
-
 /* bring in shrid names to be passed into the web app */
 merge 1:1 shrid using $shrug/keys/shrug_names, keepusing(place_name) nogen
 
 /* drop unnecessary vars - keep code for merge vars above for future debugging, but we don't want them in the vector tileset */
-drop pc11_state_id pc11_district_id _m*
+drop _m*
 
 /* order the merge variables at the end */
 order shrid place_name, first
 
-/* TEMP: drop more vars to cut down on file size */
-keep shrid place_name pc11_vd* ec13_s* evi_delta_k_*_ln mean_maize_hrf dist_km_canal mic5_dt_no_nrg_epump
-
-/* save the data */
+/* save the full data */
 save $iec/rural_platform/shrid_data.dta, replace
+
+/* TEMP: drop more vars to cut down on file size */
+keep shrid place_name $tilesetvars
+
+/* save just the tileset variables for the smaller mapping datasetx */
+save $iec/rural_platform/shrid_data_tileset.dta, replace
 
 /* open the canals data, created in canals/b/clean_canals_data.do.
 canals can be merged to the shapefile using the project_code */
@@ -129,10 +164,32 @@ save $iec/rural_platform/canal_data.dta, replace
 /* District aggregates */
 /***********************/
 
-/* we need district collapses for the shrid-level data above. */
+/* open the full data */
+use $iec/rural_platform/shrid_data, clear
 
-/* be sure that district names exist in a variable called district_name */
-/* please rename pc11_district_id to pc11_d_id to save a step on the shapefile merge */
+/* merge in the pc11 state and district variables */
+merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) keepusing(pc11_state_id pc11_district_id pc11_district_name) nogen
 
-/* output location: */
-//save $iec/rural_platform/district_data.dta, replace
+/* collapse to district level */
+
+
+/* merge in minor irrigation census: irrigation by type */
+merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
+
+/* get the percentage */
+gen mic5_diesel_wells_share = mic5_diesel_wells / mic5_total_wells
+lab var mic5_diesel_wells_share "share of wells that are diesel-dependent"
+
+/* rename district variables */
+ren pc11_district_id pc11_d_id
+ren cpc11_district_name district_name
+
+/* save the full dataset */
+save $iec/rural_platform/district_data.dta, replace
+
+/* keep just the tileset variables, adding the district-only mic, for the smaller mapping dataset */
+keep pc11_d_id $tilesetvars mic*
+
+/* save the tileset */
+save $iec/rural_platform/district_data_tileset, replace
+
