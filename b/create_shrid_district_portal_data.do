@@ -16,10 +16,10 @@ label var pc11_vd_land_ag_tot "total agricultural land"
 drop pc11_vd_land_misc_trcp pc11_vd_land_nt_swn
 
 /* keep shrid and desired variables */
-keep shrid pc11_vd_land_src_irr pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot _m_vd
+keep shrid pc11_vd_land_src_irr pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot pc11_pca_tot_p _m_vd 
 
 /* ec13: Employment in agro-processing and warehousing/storage */
-merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s11 ec13_s59 ec13_emp_all) gen(_m_ec13)
+merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s59 ec13_emp_all) gen(_m_ec13)
 
 /* add NIC04 descriptions to labels */
 lab var ec13_s5 "Production, processing and preserving of meat and meat products"
@@ -28,12 +28,11 @@ lab var ec13_s7 "Manufacture of dairy product"
 lab var ec13_s8 "Manufacture grain mill and starch products"
 lab var ec13_s9 "Manufacture of prepared animal feeds"
 lab var ec13_s10 "Manufacture of nuts, sugar, noodles, and other foods"
-lab var ec13_s11 "Manufacture of beverages (mostly alcohol)"
 lab var ec13_s59 "Storage and warehousing"
 cap lab var ec13_s43 "Wholesale of agricultural raw materials and live animals"
 
 /* calculate total agroprocessing employment */
-gen ec13_agro_share = ec13_s5 + ec13_s6 + ec13_s7 + ec13_s8 + ec13_s9 + ec13_s10 + ec13_s11
+gen ec13_agro_share = ec13_s5 + ec13_s6 + ec13_s7 + ec13_s8 + ec13_s9 + ec13_s10
 
 /* calculate agroprocessing as a share of total employment */
 replace ec13_agro_share = ec13_agro_share / ec13_emp_all
@@ -121,7 +120,9 @@ lab var dist_km_river "distance to nearest river (km)"
 lab var dist_km_canal "distance to nearest canal (km)"
 
 /* merge in command area information */
-merge 1:1 shrid using $iec/canals/clean/shrid_command_distances, gen(_m_comm) keepusing(near_comm_dist shrid_comm_overlap)
+merge 1:1 shrid using $iec/canals/clean/shrid_command_distances, gen(_m_comm) keepusing(near_comm_dist shrid_comm_overlap comm_dummy)
+
+/* add a caveat here about what to do with shrids that are inside command areas */
 ren near_comm_dist dist_km_command_area
 lab var dist_km_command_area "distance to nearest command area (km)"
 ren shrid_comm_overlap percent_in_command_area
@@ -159,7 +160,6 @@ drop year_start_pdf year_completed_pdf year_approval_pdf _merge
 /* save canal-level dataset */
 save $iec/rural_platform/canal_data.dta, replace
 
-
 /***********************/
 /* District aggregates */
 /***********************/
@@ -170,26 +170,28 @@ use $iec/rural_platform/shrid_data, clear
 /* merge in the pc11 state and district variables */
 merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) keepusing(pc11_state_id pc11_district_id pc11_district_name) nogen
 
-/* collapse to district level */
+/* merge in the shrid area */
+merge 1:1 shrid using $shrug/data/shrug_spatial, keepusing(area_laea)
+drop _merge
 
+/* drop if missing district */
+drop if mi(pc11_district_id)
+
+/* collapse to district level - NOTE: NOT ALL VARIABLES INCLUDED YET */
+collapse (sum) pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot, by(pc11_state_id pc11_district_id pc11_district_name)
 
 /* merge in minor irrigation census: irrigation by type */
 merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
 
-/* get the percentage */
-gen mic5_diesel_wells_share = mic5_diesel_wells / mic5_total_wells
-lab var mic5_diesel_wells_share "share of wells that are diesel-dependent"
-
 /* rename district variables */
 ren pc11_district_id pc11_d_id
-ren cpc11_district_name district_name
+ren pc11_district_name district_name
 
 /* save the full dataset */
 save $iec/rural_platform/district_data.dta, replace
 
 /* keep just the tileset variables, adding the district-only mic, for the smaller mapping dataset */
-keep pc11_d_id $tilesetvars mic*
+keep pc11_d_id pc11_vd* mic*
 
 /* save the tileset */
 save $iec/rural_platform/district_data_tileset, replace
-
