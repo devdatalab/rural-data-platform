@@ -1,7 +1,9 @@
 /* assemble data for agricultural rural development platform */
 
 /* define variable list to be kept for smaller mapping datasets */
-global tilesetvars pc11_vd* ec13_emp_all ec13_agro_share ec13_storage_share evi_delta_k_*_ln gaez_maize_lrf dist_km_canal
+global shrid_tilevars pc11_vd* ec13_emp_all ec13_agro_share ec13_storage_share evi_delta_k_*_ln gaez_maize_lrf dist_km_canal
+global micvars mic5_st_total mic5_mt_total mic5_dt_total mic5_dw_total mic5_sl_total mic5_sf_total mic5_total mic5_diesel_wells mic5_diesel_wells_share
+global all_tilevars $shrid_tilevars $micvars
 
 /* pc11: Agricultural power supply and other infrastructure,  Irrigation and agricultural areas under cultivation */
 /* open pca */
@@ -140,10 +142,15 @@ order shrid place_name, first
 /* save the full data */
 save $iec/rural_platform/shrid_data.dta, replace
 
-/* TEMP: drop more vars to cut down on file size */
-keep shrid place_name $tilesetvars
+/* generate MIC variable placeholders for easier var manipulation in the web app */
+foreach var in $micvars {
+    gen `var' = .
+}
 
-/* save just the tileset variables for the smaller mapping datasetx */
+/* keep only tileset variables to cut down on file size */
+keep shrid place_name $all_tilevars
+
+/* save just the tileset variables for the smaller mapping dataset */
 save $iec/rural_platform/shrid_data_tileset.dta, replace
 
 /* open the canals data, created in canals/b/clean_canals_data.do.
@@ -178,20 +185,32 @@ drop _merge
 drop if mi(pc11_district_id)
 
 /* collapse to district level - NOTE: NOT ALL VARIABLES INCLUDED YET */
-collapse (sum) pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot, by(pc11_state_id pc11_district_id pc11_district_name)
+/* FIXME: EVI needs to be recreated from raw values, not logs */
+/* FIXME: ec13*share and nco2d_cultiv_share should not be weighted by area, but by ec13_emp_all / reconstructed from raw counts */
+/* TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
+drop ec13_storage_share
+local sumvars pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s* percent_in_command_area
+local meanvars evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share ec13*share dist_km_*
+collapse (rawsum) `sumvars' (mean) `meanvars' [pw=area_laea], by(pc11_state_id pc11_district_id pc11_district_name) 
 
 /* merge in minor irrigation census: irrigation by type */
 merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
 
-/* rename district variables */
+/* rename district variables for the web app */
 ren pc11_district_id pc11_d_id
 ren pc11_district_name district_name
+ren pc11_state_id pc11_s_id 
 
 /* save the full dataset */
 save $iec/rural_platform/district_data.dta, replace
 
-/* keep just the tileset variables, adding the district-only mic, for the smaller mapping dataset */
-keep pc11_d_id pc11_vd* mic*
+/* TEMP: gen blank storage share var (needs to be rebuilt, see above FIXME comment) */
+gen ec13_storage_share = .
+
+/* keep just the tileset variables, adding the district-only mic, for
+the smaller mapping dataset. $all_tilevars asserts variable match
+across dist and shrid tilesets */
+keep pc11*id district_name $all_tilevars
 
 /* save the tileset */
 save $iec/rural_platform/district_data_tileset, replace
