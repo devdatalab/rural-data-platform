@@ -190,8 +190,10 @@ drop if mi(pc11_district_id)
 /* TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
 drop ec13_storage_share
 local sumvars pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s* percent_in_command_area
-local meanvars evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share ec13*share dist_km_*
+local meanvars evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share dist_km_* ec13*share
+collapse_save_labels
 collapse (rawsum) `sumvars' (mean) `meanvars' [pw=area_laea], by(pc11_state_id pc11_district_id pc11_district_name) 
+collapse_apply_labels
 
 /* merge in minor irrigation census: irrigation by type */
 merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
