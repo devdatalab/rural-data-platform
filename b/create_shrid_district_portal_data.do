@@ -1,8 +1,16 @@
 /* assemble data for agricultural rural development platform */
 
-/* define variable list to be kept for smaller mapping datasets */
-global shrid_tilevars pc11_vd* ec13_emp_all ec13_agro_share ec13_storage_share evi_delta_k_*_ln gaez_maize_lrf dist_km_canal
-global micvars mic5_st_total mic5_mt_total mic5_dt_total mic5_dw_total mic5_sl_total mic5_sf_total mic5_total mic5_diesel_wells mic5_diesel_wells_share
+/* FIXME:
+TODOS:
+- all fixmes below
+- pull aggregation method and weights from google sheet https://docs.google.com/spreadsheets/d/1bmEtcyxhiPdZDxWY8yySJT8FUrmNxLtlmKZhEcAUc70/edit#gid=1517113052
+  - note google sheet parsing method is also used in create_json_metadata as well
+*/
+
+/* pull project globals and settings from config.yaml */
+process_yaml_config ~/ddl/rural-data-platform/config/config.yaml
+
+/* define master variable list to be kept for smaller mapping datasets, built from project globals */
 global all_tilevars $shrid_tilevars $micvars
 
 /* pc11: Agricultural power supply and other infrastructure,  Irrigation and agricultural areas under cultivation */
@@ -187,7 +195,7 @@ drop if mi(pc11_district_id)
 /* collapse to district level - NOTE: NOT ALL VARIABLES INCLUDED YET */
 /* FIXME: EVI needs to be recreated from raw values, not logs */
 /* FIXME: ec13*share and nco2d_cultiv_share should not be weighted by area, but by ec13_emp_all / reconstructed from raw counts */
-/* TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
+/* FIXME: TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
 drop ec13_storage_share
 local sumvars pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s* percent_in_command_area
 local meanvars evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share dist_km_* ec13*share
@@ -206,7 +214,7 @@ ren pc11_state_id pc11_s_id
 /* save the full dataset */
 save $iec/rural_platform/district_data.dta, replace
 
-/* TEMP: gen blank storage share var (needs to be rebuilt, see above FIXME comment) */
+/* FIXME TEMP: gen blank storage share var (needs to be rebuilt, see above FIXME comment) */
 gen ec13_storage_share = .
 
 /* keep just the tileset variables, adding the district-only mic, for
@@ -216,3 +224,41 @@ keep pc11*id district_name $all_tilevars
 
 /* save the tileset */
 save $iec/rural_platform/district_data_tileset, replace
+
+
+
+
+exit
+
+ADD THIS IF NECESSARY
+ASSERT VARIABLE FORMATS AND VALUES ARE CORRECT AT BOTH SHRID AND DIST LEVELS
+
+/* helper program for % formatting */
+cap prog drop convert_to_percentage
+prog def convert_to_percentage
+
+  /* takes a list of variables as input */
+  syntax varlist
+  
+  /* format pctage vars to 0-100 with a single decimal place */
+  foreach var in `varlist'  {
+    assert inrange(`var', 0, 1) if !mi(`var')
+    replace `var' = round(100 * `var', 0.1)
+    assert inrange(`var', 0, 100) if !mi(`var')
+  }
+end
+
+
+/***************/
+/* Format vars */
+/***************/
+
+/* convert pctage variables currently in decimals to percentage formatting */
+convert_to_percentage emp_pc lit_rate urbanization
+
+/* format the forest cover var (round) */
+replace avg_forest2014 = round(avg_forest2014, 0.1)
+
+/* round consumption to nearest rupee */
+replace secc_rural_cons_pc = round(secc_rural_cons_pc, 1)
+
