@@ -3,20 +3,24 @@
 
 # define globals shared across Python and Stata
 globals:
-    code: ~/ddl/rural-data-platform
-    data: ~/iec/rural_platform
+    pcode: ~/ddl/rural-data-platform
+    pdata: ~/iec/rural_platform
     shrug: ~/iec1/shrug
     ag: ~/iec/ag
     minor: ~/iec/minor
     mb_token: sk.eyJ1IjoiZGV2ZGF0YWxhYiIsImEiOiJjazR0MHdpd3cxZnF3M21sMWFkYnJ6YWthIn0.on65xUM5lg9Ww_PSbWo9eA
-    statelist: ['andhrapradesh', 'jharkhand', 'gujarat']
+    shrid_tilevars: pc11_vd* ec13_emp_all ec13_agro_share ec13_storage_share evi_delta_k_*_ln gaez_maize_* dist_km_canal dist_km_command_area dist_km_river percent_in_command_area
+    micvars: mic5_st_total mic5_mt_total mic5_dt_total mic5_dw_total mic5_sl_total mic5_sf_total mic5_total mic5_diesel_wells mic5_diesel_wells_share
+    arddp_gsheet: https://docs.google.com/spreadsheets/d/e/2PACX-1vSEGmY8L3tMU9dnSfUODJJ0GBTUfA3dhwXn9gmYCSBlGKJoh8jNd2P6siJtfyC2mJsY7y5zxP7BeIdJ/pub?gid=1517113052&single=true&output=csv
+#    statelist: ['andhrapradesh', 'jharkhand', 'gujarat']
 
     # NOTE: the $TMP global refers to the environment variable, not the $tmp Stata global.
     data_out: ${TMP}
+    web_out: ~/ddl/ddl_web
 
 # define Stata programs to be run for this project
-stata: 
-       do ~/ddl/mining-economics/minec_programs.do
+#stata: 
+#       do ~/ddl/mining-economics/minec_programs.do
 
 # list folders with Python functions to be added to the python path for easy use
 python: 
