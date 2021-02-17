@@ -94,5 +94,5 @@ poly = import_vector_data('~/iec1/gis/pc11/pc11-district-simplified.shp')
 shp_clean = poly.drop(columns=['pc11_s_id'])
 
 # run the join
-table_geodataframe_join(poly=shp_clean, id='pc11_d_id', fp_table='~/iec/rural_platform/district_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/district.geojson'))
+table_geodataframe_join(poly_in=shp_clean, join_id='pc11_d_id', fp_table='~/iec/rural_platform/district_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/district.geojson'))
 
