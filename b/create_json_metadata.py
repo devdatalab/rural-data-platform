@@ -6,10 +6,17 @@
 #  - check globals in batch mode
 
 
+# FIXME: automate this so it works in batch mode, not just interactive shells
+# (with ddl/config/.python_profile.py)
+import sys, os, importlib
+from pathlib import Path
+sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
+TMP = Path(os.environ.get('TMP'))
+
+
 import pandas as pd
 import requests
 import json
-from pathlib import Path
 import re
 import warnings
 from tools import process_yaml_config

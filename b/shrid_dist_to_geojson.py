@@ -2,6 +2,12 @@
 # outputs geojson, which will then be merged into a tileset using tippecanoe
 # depends on py_spatial env (run from snakemake)
 
+
+# FIXME: automate this so it works in batch mode, not just interactive shells
+# (with ddl/config/.python_profile.py)
+import sys, os, importlib
+sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
+
 from geospatialtools.utils import import_vector_data
 import geopandas as gpd
 import pandas as pd
