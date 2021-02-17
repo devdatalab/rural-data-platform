@@ -296,3 +296,7 @@ meta_out = f'portalMeta = `[{jsonmeta}]`;'
 text_file = open(web_out, "w")
 text_file.write(meta_out)
 text_file.close()
+
+# notify
+print(f'JSON metadata written to JS object at: {web_out}')
+print("WARNING: now you need to manually push changes in the ddl-web repository")
