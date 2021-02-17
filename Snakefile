@@ -18,8 +18,8 @@ envvars:
     'TMP'
     
 # set paths, leveraging settings in the config file
-CODE=os.path.expanduser(config['globals']['code'])
-DATA=os.path.expanduser(config['globals']['data'])
+CODE=os.path.expanduser(config['globals']['pcode'])
+DATA=os.path.expanduser(config['globals']['pdata'])
 SHRUG=os.path.expanduser(config['globals']['shrug'])
 AG=os.path.expanduser(config['globals']['ag'])
 MINOR=os.path.expanduser(config['globals']['minor'])
@@ -35,7 +35,9 @@ IEC1=os.path.expanduser(os.environ['IEC1'])
 
 # master rule to define the final output
 rule all:
-    input: f'{TMP}/tileset_push.log'
+    input:
+        f'{TMP}/tileset_push.log',
+        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'
 
 # creation of tabular shrid and district datasets
 rule create_shrid_district_portal_data:
@@ -59,6 +61,28 @@ rule create_shrid_district_portal_data:
         f'{IEC}/rural_platform/district_data.dta'
     shell: f'stata -b {CODE}/b/create_shrid_district_portal_data.do'
 
+# FIXME: correct inputs and outputs; add Conda yaml config for rmapshapr (make sure it syncs with polaris GDAL)
+# simplify shapefiles using R
+#rule simplify_shapes:
+#    input:
+#        f'{IEC1}/gis/pc11/pc11-district.shp',
+#        f'{IEC1}/gis/shrug/shrids.shp',
+#    output:
+#    shell: f'Rscript {CODE}/b/simplify_shapes.r -i {input} -o {output}'
+        
+# FIXME: add cost of cultivation data
+# this build file needs to be written (b/create_cost_of_cultivation_portal_data.do)
+
+# create JSON metadata
+rule create_json_metadata:
+    input:
+        rules.create_shrid_district_portal_data.output,
+        f'{CODE}/config/config.yaml',
+        f'{CODE}/b/create_json_metadata.py'
+    output:
+        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'
+    shell: f'python {CODE}/b/create_json_metadata.py'
+           
 # creation of geojson from tabular district and shrid data
 rule shrid_dist_to_geojson:
     input:
