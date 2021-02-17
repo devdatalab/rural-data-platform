@@ -79,7 +79,7 @@ poly = import_vector_data('~/iec1/gis/shrug/shrids_corrected.shp')
 shp_clean = poly.drop(columns=['pc11_s_id', 'pc11_d_id', 'pop_match', 'quality', 'PolygonTyp', 'point_lat', 'point_lon', 'LargePoly'])
 
 # run the join
-table_geodataframe_join(poly_in=shp_clean, join_id='shrid', fp_table='~/iec/rural_platform/shrid_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/shrid.geojson')
+table_geodataframe_join(poly_in=shp_clean, join_id='shrid', fp_table='~/iec/rural_platform/shrid_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/shrid.geojson'))
 
 
 
