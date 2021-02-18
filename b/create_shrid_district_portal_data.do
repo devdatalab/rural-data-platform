@@ -7,11 +7,132 @@ TODOS:
   - note google sheet parsing method is also used in create_json_metadata as well
 */
 
+/************/
+/* PREAMBLE */
+/************/
+
 /* pull project globals and settings from config.yaml */
 process_yaml_config ~/ddl/rural-data-platform/config/config.yaml
 
 /* define master variable list to be kept for smaller mapping datasets, built from project globals */
 global all_tilevars $shrid_tilevars $micvars
+
+/* helper program for % formatting */
+cap prog drop convert_to_percentage
+prog def convert_to_percentage
+
+  /* takes a list of variables as input */
+  syntax varlist
+  
+  /* format pctage vars to 0-100 with a single decimal place */
+  foreach var in `varlist'  {
+    assert inrange(`var', 0, 1) if !mi(`var')
+    replace `var' = round(100 * `var', 0.1)
+    assert inrange(`var', 0, 100) if !mi(`var')
+  }
+end
+
+/* shorten SHRIC descriptions for web */
+use $shrug/keys/shric_descriptions.dta, clear
+replace shric_desc = "Spinning, weaving, and finishing of textiles" if shric == 50
+replace shric_desc = "Pipeline transport" if shric == 55
+replace shric_desc = "Miscellaneous manufacturing" if shric == 72
+replace shric_desc = "Miscellaneous business services" if shric == 87
+save $tmp/shric_descriptions_amended.dta, replace
+
+/* define prog for getting top 3 shrics at different levels */
+cap prog drop get_top_shrics
+prog def get_top_shrics
+  {
+
+    /* syntax */
+    syntax anything
+
+    /* pull first word from input level (e.g. district_name state_name will become district) */
+    local savename = subinstr("`anything'", "_", " ", .)
+    local savename : word 1 of `savename'
+    
+    /* rename input (spatial var) for clarity) */
+    local spatial `anything'
+
+    /* reshape long */
+    reshape long ec13_s, i(`spatial') j(sector)
+
+    /* rank the products within districts */
+    gen minusemp = -ec13_s
+    bys `spatial' (minusemp): gen rank = _n
+    drop minusemp
+
+    /* keep top 3 sectors */
+    keep if inrange(rank, 1, 3)
+
+    /* drop if a rank has zero employment */
+    drop if ec13_s == 0
+
+    /* create new variables for these sectors */
+    forval i = 1/3 {
+      bys `spatial': gen sector`i' = sector if rank == `i'
+      bys `spatial' (sector`i') : replace sector`i' = sector`i'[_n-1] if missing(sector`i') 
+    }
+
+    /* reduce back to uniqueness */
+    keep if rank == 1
+    drop ec13_s sector rank
+
+    /* merge in shric descriptions for top 3 industries */
+    forval i = 1/3 {
+      gen shric = sector`i'
+      merge m:1 shric using $tmp/shric_descriptions_amended.dta
+      assert _merge != 1 if !mi(sector`i')
+      drop if _merge == 2
+      drop _merge
+      drop sector`i'
+      ren shric_desc sector`i'
+      drop shric
+    }
+
+    /* save to $tmp for future merging */
+    save $tmp/`savename'_json_shrics, replace
+  }
+end
+
+
+/**********/
+/* SHRICS */
+/**********/
+
+///* bring in sector data */
+//clear
+//useshrug
+//
+///* clear obs that have no ec13 emp data */
+//get_shrug_var ec13_emp_all
+//drop if mi(ec13_emp_all)
+//drop ec13_emp_all
+//
+///* get sector data */
+//forval i = 1/90 {
+//  get_shrug_var ec13_s`i'
+//}
+//
+///* save as input for shrid-level stats */
+//save $tmp/shric_json_input, replace
+//
+///* collapse to districts and save */
+//get_shrug_key state_name district_name
+//collapse (sum) ec13_s*, by(state_name district_name)
+//
+///* run the prog to get top shrics, saved to $tmp/district_json_shrics */
+//get_top_shrics district_name state_name
+//
+///* now get top shrics at shrid level, saved to $tmp/shrid_json_shrics */
+//use $tmp/shric_json_input, clear
+//get_top_shrics shrid
+
+
+/***************/
+/* SHRID-LEVEL */
+/***************/
 
 /* pc11: Agricultural power supply and other infrastructure,  Irrigation and agricultural areas under cultivation */
 /* open pca */
@@ -158,7 +279,20 @@ foreach var in $micvars {
 /* keep only tileset variables to cut down on file size */
 keep shrid place_name $all_tilevars
 
+/* adjust variable formats for the tileset as needed */
+foreach var of varlist dist* {
+  replace `var' = round(`var')
+}
+
+/* convert to percentages */
+convert_to_percentage percent_in_command_area ec13_storage_share mic5_diesel_wells_share ec13_agro_share
+
+/* merge in top shric sectors */
+merge 1:1 shrid using $tmp/shrid_json_shrics
+drop _merge
+
 /* save just the tileset variables for the smaller mapping dataset */
+compress
 save $iec/rural_platform/shrid_data_tileset.dta, replace
 
 /* open the canals data, created in canals/b/clean_canals_data.do.
@@ -170,23 +304,28 @@ lab var plan_start "Planning period project started, if known"
 lab var plan_completed "Planning period project completed, if known"
 
 /* drop old variables */
-drop year_start_pdf year_completed_pdf year_approval_pdf _merge
+drop _merge
 
 /* save canal-level dataset */
 save $iec/rural_platform/canal_data.dta, replace
 
-/***********************/
-/* District aggregates */
-/***********************/
+
+/************/
+/* DISTRICT */
+/************/
 
 /* open the full data */
 use $iec/rural_platform/shrid_data, clear
 
 /* merge in the pc11 state and district variables */
-merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) keepusing(pc11_state_id pc11_district_id pc11_district_name) nogen
+merge m:1 shrid using $shrug/keys/shrug_pc11_district_key, keep(match master) keepusing(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) nogen
 
 /* merge in the shrid area */
 merge 1:1 shrid using $shrug/data/shrug_spatial, keepusing(area_laea)
+drop _merge
+
+/* bring in population */
+merge 1:1 shrid using $shrug/data/shrug_pc11_pca, keepusing(pc11_pca_tot_p)
 drop _merge
 
 /* drop if missing district */
@@ -197,19 +336,14 @@ drop if mi(pc11_district_id)
 /* FIXME: ec13*share and nco2d_cultiv_share should not be weighted by area, but by ec13_emp_all / reconstructed from raw counts */
 /* FIXME: TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
 drop ec13_storage_share
-local sumvars pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_tar_road pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s* percent_in_command_area
-local meanvars evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share dist_km_* ec13*share
+local sumvars pc11_pca_tot_p pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s*
+local meanvars percent_in_command_area pc11_vd_tar_road pc11_vd_power_agr_sum pc11_vd_power_agr_win evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share dist_km_* ec13*share
 collapse_save_labels
-collapse (rawsum) `sumvars' (mean) `meanvars' [pw=area_laea], by(pc11_state_id pc11_district_id pc11_district_name) 
+collapse (rawsum) `sumvars' (mean) `meanvars' [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
 collapse_apply_labels
 
 /* merge in minor irrigation census: irrigation by type */
 merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_data, nogen keep(match master)
-
-/* rename district variables for the web app */
-ren pc11_district_id pc11_d_id
-ren pc11_district_name district_name
-ren pc11_state_id pc11_s_id 
 
 /* save the full dataset */
 save $iec/rural_platform/district_data.dta, replace
@@ -217,48 +351,27 @@ save $iec/rural_platform/district_data.dta, replace
 /* FIXME TEMP: gen blank storage share var (needs to be rebuilt, see above FIXME comment) */
 gen ec13_storage_share = .
 
+/* round variables to integers */
+foreach var of varlist dist_* pc11_vd_land* {
+  replace `var' = round(`var')
+}
+
+/* merge in top shric sectors */
+ren pc11_state_name state_name
+ren pc11_district_name district_name
+merge 1:1 state_name district_name using $tmp/district_json_shrics, keep(master match)
+drop _merge
+
+/* rename district variables for the web app */
+ren pc11_district_id pc11_d_id
+ren pc11_state_id pc11_s_id 
+
 /* keep just the tileset variables, adding the district-only mic, for
 the smaller mapping dataset. $all_tilevars asserts variable match
 across dist and shrid tilesets */
-keep pc11*id district_name $all_tilevars
+keep pc11*id district_name pc11_pca_tot_p $all_tilevars
 
 /* save the tileset */
+compress
 save $iec/rural_platform/district_data_tileset, replace
-
-
-
-
-exit
-
-ADD THIS IF NECESSARY
-ASSERT VARIABLE FORMATS AND VALUES ARE CORRECT AT BOTH SHRID AND DIST LEVELS
-
-/* helper program for % formatting */
-cap prog drop convert_to_percentage
-prog def convert_to_percentage
-
-  /* takes a list of variables as input */
-  syntax varlist
-  
-  /* format pctage vars to 0-100 with a single decimal place */
-  foreach var in `varlist'  {
-    assert inrange(`var', 0, 1) if !mi(`var')
-    replace `var' = round(100 * `var', 0.1)
-    assert inrange(`var', 0, 100) if !mi(`var')
-  }
-end
-
-
-/***************/
-/* Format vars */
-/***************/
-
-/* convert pctage variables currently in decimals to percentage formatting */
-convert_to_percentage emp_pc lit_rate urbanization
-
-/* format the forest cover var (round) */
-replace avg_forest2014 = round(avg_forest2014, 0.1)
-
-/* round consumption to nearest rupee */
-replace secc_rural_cons_pc = round(secc_rural_cons_pc, 1)
 
