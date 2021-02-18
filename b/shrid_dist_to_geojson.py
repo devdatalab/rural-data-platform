@@ -10,17 +10,17 @@
 # Preamble #
 ############
 
+# hack to get tools imported...
 import sys, os, importlib
 sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
-
 from geospatialtools.utils import import_vector_data
+
 import geopandas as gpd
 import pandas as pd
 
 def import_tabular_data(fp):
     """
     Reads in tabular data with file extension checks
-
     fp: filepath for datafile to be imported, must bs shp/csv/dta/excel
     """
     # expand data filepath
@@ -49,7 +49,7 @@ def import_tabular_data(fp):
 
     return target_df
 
-
+# function to merge tabular data with a shapefile / gdf object
 def table_geodataframe_join(poly_in, join_id, fp_table, fp_out=""):
 
     # expand filepaths
@@ -78,13 +78,14 @@ def table_geodataframe_join(poly_in, join_id, fp_table, fp_out=""):
 ##############
 
 # read in shrid shapefile
-poly = import_vector_data('~/iec1/gis/shrug/shrids_corrected.shp')
+shrid_poly = import_vector_data('~/iec/rural_platform/shrids-simplified.shp')
 
 # remove unnecessary fields to lighten the vector tileset
-shp_clean = poly.drop(columns=['pc11_s_id', 'pc11_d_id', 'pop_match', 'quality', 'PolygonTyp', 'point_lat', 'point_lon', 'LargePoly'])
+shrid_clean = shrid_poly.drop(columns=['pc11_s_id', 'pc11_d_id', 'pop_match', 'quality', 'PolygonTyp', 'point_lat', 'point_lon', 'LargePoly'])
 
 # run the join
-table_geodataframe_join(poly_in=shp_clean, join_id='shrid', fp_table='~/iec/rural_platform/shrid_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/shrid.geojson'))
+print("initiating shrid-level join")
+table_geodataframe_join(poly_in=shrid_clean, join_id='shrid', fp_table='~/iec/rural_platform/shrid_data_tileset.dta', fp_out=os.path.expanduser('~/iec/rural_platform/shrid.geojson'))
 
 
 #################
@@ -92,11 +93,12 @@ table_geodataframe_join(poly_in=shp_clean, join_id='shrid', fp_table='~/iec/rura
 #################
 
 # read in district shapefile
-poly = import_vector_data('~/iec1/gis/pc11/pc11-district-simplified.shp')
+dist_poly = import_vector_data('~/iec/rural_platform/districts-simplified.shp')
 
 # remove unnecessary fields to lighten the vector tileset
-shp_clean = poly.drop(columns=['pc11_s_id'])
+dist_clean = dist_poly.drop(columns=['pc11_s_id'])
 
 # run the join
-table_geodataframe_join(poly_in=shp_clean, join_id='pc11_d_id', fp_table='~/iec/rural_platform/district_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/district.geojson'))
+print("initiating district-level join")
+table_geodataframe_join(poly_in=dist_clean, join_id='pc11_d_id', fp_table='~/iec/rural_platform/district_data_tileset.dta', fp_out=os.path.expanduser('~/iec/rural_platform/district.geojson'))
 
