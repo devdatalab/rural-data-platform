@@ -1,6 +1,5 @@
 import topojson as tp
 import geopandas as gpd
-from graphout_py import graphout
 
 # set paths
 dist_in = IEC1 / 'gis/pc11/pc11-district-simplified.shp'
