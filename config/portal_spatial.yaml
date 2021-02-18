@@ -4,20 +4,19 @@ channels:
   - defaults
 dependencies:
   - python=3
-  - gdal=3.0
-  - geos=3.8
-  - geopandas=0.7
-  - geotiff=1.5
-  - git=2.23
+  - gdal
+  - geos
+  - geopandas
+  - geotiff=1
+  - git=2
   - haversine=0.4
-  - matplotlib=3.2.1
-  - numpy=1.17.2
-  - pandas=1.0.3
-  - proj=6.3
+  - matplotlib=3
+  - numpy=1
+  - pandas=1
+  - proj=6
   - pygeos=0.7
-  - pysal=2.2
-  - rasterio=1.1
+  - pysal=2
+  - rasterio=1
   - rasterstats=0.14
-  - requests=2.23.0
-  - shapely=1.7
-  - simplejson=3.17
+  - shapely=1
+  - topojson
