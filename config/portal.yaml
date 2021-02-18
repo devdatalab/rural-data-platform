@@ -1,11 +1,9 @@
 channels:
-  - anaconda
-  - conda-forge
   - defaults
+  - conda-forge
 dependencies:
   - python=3
   - requests
-  - argparse
   - boto3
   - git=2
   - numpy
