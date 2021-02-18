@@ -5,6 +5,11 @@
 
 # FIXME: automate this so it works in batch mode, not just interactive shells
 # (with ddl/config/.python_profile.py)
+
+############
+# Preamble #
+############
+
 import sys, os, importlib
 sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
 
@@ -80,7 +85,6 @@ shp_clean = poly.drop(columns=['pc11_s_id', 'pc11_d_id', 'pop_match', 'quality',
 
 # run the join
 table_geodataframe_join(poly_in=shp_clean, join_id='shrid', fp_table='~/iec/rural_platform/shrid_data.dta', fp_out=os.path.expanduser('~/iec/rural_platform/shrid.geojson'))
-
 
 
 #################
