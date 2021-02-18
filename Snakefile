@@ -37,7 +37,8 @@ IEC1=os.path.expanduser(os.environ['IEC1'])
 rule all:
     input:
         f'{TMP}/tileset_push.log',
-        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'
+        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js',
+        f'{TMP}/canal-command.mbtiles'
 
 # creation of tabular shrid and district datasets
 rule create_shrid_district_portal_data:
@@ -61,18 +62,6 @@ rule create_shrid_district_portal_data:
         f'{IEC}/rural_platform/district_data.dta'
     shell: f'stata -b {CODE}/b/create_shrid_district_portal_data.do'
 
-# FIXME: correct inputs and outputs; add Conda yaml config for rmapshapr (make sure it syncs with polaris GDAL)
-# simplify shapefiles using R
-#rule simplify_shapes:
-#    input:
-#        f'{IEC1}/gis/pc11/pc11-district.shp',
-#        f'{IEC1}/gis/shrug/shrids.shp',
-#    output:
-#    shell: f'Rscript {CODE}/b/simplify_shapes.r -i {input} -o {output}'
-        
-# FIXME: add cost of cultivation data
-# this build file needs to be written (b/create_cost_of_cultivation_portal_data.do)
-
 # create JSON metadata
 rule create_json_metadata:
     input:
@@ -82,13 +71,24 @@ rule create_json_metadata:
     output:
         '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'
     shell: f'python {CODE}/b/create_json_metadata.py'
+
+# simplify shapefiles 
+rule simplify_shapes:
+    input:
+        f'{IEC1}/gis/pc11/pc11-district.shp',
+        f'{IEC1}/gis/shrug/shrids.shp',
+        f'{CODE}/b/simplify_shapes.py'
+    output:
+        f'{IEC}/rural_platform/shrids-simplified.shp',
+        f'{IEC}/rural_platform/districts-simplified.shp',
+    conda: 'config/portal_spatial.yaml'
+    shell: f'python {CODE}/b/simplify_shapes.py'
            
 # creation of geojson from tabular district and shrid data
 rule shrid_dist_to_geojson:
     input:
         rules.create_shrid_district_portal_data.output,        
-        f'{IEC1}/gis/pc11/pc11-district-simplified.shp',
-        f'{IEC1}/gis/shrug/shrids_corrected.shp',
+        rules.simplify_shapes.output,        
         f'{CODE}/b/shrid_dist_to_geojson.py'
     output:
         f'{IEC}/rural_platform/district.geojson',
@@ -102,13 +102,33 @@ rule create_vector_tileset:
         rules.shrid_dist_to_geojson.output,
         f'{CODE}/b/create_vector_tileset.sh'
     output: f'{TMP}/rural_portal_data.mbtiles'
-    shell: '{CODE}/b/create_vector_tileset.sh {output} {rules.shrid_dist_to_geojson.output}'
+    shell: '{CODE}/b/create_vector_tileset.sh'
+        
+# export GEOJSON canal command area and line shapes for use in scrolly
+rule prep_canal_command_geojson:
+    input:
+        f'{IEC}/canals/clean/command_areas.shp',
+        f'{IEC}/canals/raw/wris/canal_line.shp',
+        f'{CODE}/b/prep_canal_command_geojson.py'
+    output:
+        f'{TMP}/canal_lines.geojson',
+        f'{TMP}/command_areas.geojson'
+    shell: f'python {CODE}/b/prep_canal_command_geojson.py'
+        
+
+# creation of command area / canal lines tileset for scrollyteller
+rule create_command_tileset:
+    input:
+        rules.prep_canal_command_geojson.output,
+        f'{CODE}/b/create_command_tileset.sh'
+    output: f'{TMP}/canal-command.mbtiles'
+    shell: '{CODE}/b/create_command_tileset.sh'
 
 # upload of mbtiles to mapbox studio
 rule push_vector_tileset:
     input:
-        f'{CODE}/b/push_vector_tileset.py',
         rules.create_vector_tileset.output,
+        f'{CODE}/b/push_vector_tileset.py',
     log: f'{TMP}/tileset_push.log'
     conda: 'config/portal.yaml'
     shell: f'python {CODE}/b/push_vector_tileset.py --file {rules.create_vector_tileset.output} --token {MBTOKEN} > {{log}}'
@@ -121,6 +141,10 @@ rule push_vector_tileset:
 # push_public_data.py - take all atlas data as well as all additional data (e.g. CoC) and:
 #  - zip sensibly
 #  - push to AWS for download by users
+
+# add cost of cultivation data
+# this build file needs to be written (b/create_cost_of_cultivation_portal_data.do)
+
 
 
 
