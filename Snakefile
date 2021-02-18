@@ -11,7 +11,6 @@ import os
 configfile: 'config/config.yaml'
 
 # pull paths from ENV vars
-# FIXME: elegantly pull env vars to snakefile
 envvars:
     'IEC',
     'IEC1',
@@ -145,6 +144,7 @@ rule push_vector_tileset:
 # add cost of cultivation data
 # this build file needs to be written (b/create_cost_of_cultivation_portal_data.do)
 
+# FIXME: elegantly pull env vars to snakefile
 
 
 
@@ -153,8 +153,8 @@ rule push_vector_tileset:
 ############
 
 # running
-#snakemake --cores 7 --use-conda
-#snakemake --cores 7
+#snakemake --cores 4 --use-conda
+#snakemake --cores 4
 
 # dry run:
 #snakemake -n
