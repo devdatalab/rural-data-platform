@@ -51,6 +51,9 @@ meta = meta.dropna(how = 'all')
 # remove explanatory / non-data rows
 meta = meta[meta['varname'].str.contains('^[#]+') == False]
 
+# replace nans with empty strings
+meta.fillna('', inplace=True)
+
 # assert variable name is unique in the table
 if not meta.varname.dropna().is_unique:
     raise ValueError("input metadata has duplicate entries in the varname column")
@@ -98,7 +101,6 @@ def get_bounds(varname, vardf):
     if pd.isnull(bottom): bottom = 0
 
     # get unit scale from 95th percentile top end
-#    print(f'getting bound scale: {varname} {top}')
     [divisor, py_round, unit] = get_scale(top)
 
     # if we have zero or 1 as minimum value, set lower bound to 0 
@@ -142,7 +144,6 @@ def gen_var_axes(minval, maxval, nticks):
     step = (maxval - minval) / nticks
         
     # if our scale top-end is over 1 million, use X.XM format
-#    print(f'getting varscale: {maxval}')
     [divisor, py_round, unit] = get_scale(maxval)
 
     # if we haven't assigned a string unit (e.g. "K" or "M", don't abbreviate the axis ticks)
@@ -251,32 +252,28 @@ for cat in catlist:
 
         # pull the row for this variable
         varrow = meta[meta.varname == var.strip()]
-#        print(f'var.strip(): {var.strip()}')
-#        print(f'varrow: {varrow}')
 
         # add dict values
-        vardict['label_short'] = varrow['lab_short'].iloc[0]
-        vardict['label_medium'] = varrow['lab_med'].iloc[0]
-        vardict['label_long'] = varrow['lab_long'].iloc[0]
-        vardict['colors'] = varrow['colors'].iloc[0]
-        vardict['suffix'] = varrow['suffix'].iloc[0]
-        vardict['unit'] = varrow['unit'].iloc[0]
-        vardict['source'] = varrow['source'].iloc[0]
+        vardict["label_short"] = varrow["lab_short"].iloc[0]
+        vardict["label_medium"] = varrow["lab_med"].iloc[0]
+        vardict["label_long"] = varrow["lab_long"].iloc[0]
+        vardict["colors"] = pd.eval(varrow["colors"].iloc[0])
+        vardict["suffix"] = varrow["suffix"].iloc[0]
+        vardict["unit"] = varrow["unit"].iloc[0]
+        vardict["source"] = varrow["source"].iloc[0]
 
         # ids just prepend shrid and dist levels to varname in list
-        vardict['ids'] = [f'shrid-{var}', f'district-{var}']
+        vardict["ids"] = [f"shrid-{var}", f"district-{var}"]
 
         # get district and shrid upper- and lower-bounds for this variable from the raw data
         [d_ub, d_lb] = get_bounds(var, dist)
-#        print('got dist bounds')
         [s_ub, s_lb] = get_bounds(var, shrid)
-#        print('got shrid bounds')
-        vardict['stops'] = {'district': [d_lb, d_ub], 'shrid': [s_lb, s_ub]}
+        vardict["stops"] = {"district": [str(d_lb), str(d_ub)], "shrid": [str(s_lb), str(s_ub)]}
 
         # axis ticks now
         d_ticks = gen_var_axes(d_lb, d_ub, 6)
         s_ticks = gen_var_axes(s_lb, s_ub, 6)
-        vardict['axes'] = {'district': d_ticks, 'shrid': s_ticks}
+        vardict["axes"] = {"district": d_ticks, "shrid": s_ticks}
 
         # now that we have the variable dict, add it to the category dict
         catdict[var] = vardict
@@ -288,6 +285,9 @@ for cat in catlist:
 ###############
 # Export JSON #
 ###############
+
+# get string with all double quotes
+jsonmeta = json.dumps(jsonmeta)
 
 # alright, we've got our JSON! package it up into a JS object 
 meta_out = f'portalMeta = `[{jsonmeta}]`;'
