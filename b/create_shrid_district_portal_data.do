@@ -14,8 +14,39 @@ TODOS:
 /* pull project globals and settings from config.yaml */
 process_yaml_config ~/ddl/rural-data-platform/config/config.yaml
 
-/* define master variable list to be kept for smaller mapping datasets, built from project globals */
-global all_tilevars $shrid_tilevars $micvars
+/* pull variable list from the gsheet metadata previously processed */
+use $metadata_fn, clear
+levelsof varname, local(varlist)
+
+/* eliminate the compound quotes and classify variable types */
+global all_tilevars
+global meanvars
+global maxvars
+global sumvars
+foreach var in `varlist' {
+    /* add to complete varlist */
+    global all_tilevars $all_tilevars `var'
+
+    /* check aggregation method */
+    levelsof aggmethod if varname == "`var'", local(aggmethod)
+    if `aggmethod' == "sum" global sumvars $sumvars `var'
+    if `aggmethod' == "mean" global meanvars $meanvars `var'
+    if `aggmethod' == "max" global maxvars $maxvars `var'
+}
+
+/* shorten SHRIC descriptions for web */
+use $shrug/keys/shric_descriptions.dta, clear
+replace shric_desc = "Spinning, weaving, and finishing of textiles" if shric == 50
+replace shric_desc = "Pipeline transport" if shric == 55
+replace shric_desc = "Miscellaneous manufacturing" if shric == 72
+replace shric_desc = "Miscellaneous business services" if shric == 87
+save $tmp/shric_descriptions_amended.dta, replace
+
+
+
+/*******************/
+/* HELPER PROGRAMS */
+/*******************/
 
 /* helper program for % formatting */
 cap prog drop convert_to_percentage
@@ -31,14 +62,6 @@ prog def convert_to_percentage
     assert inrange(`var', 0, 100) if !mi(`var')
   }
 end
-
-/* shorten SHRIC descriptions for web */
-use $shrug/keys/shric_descriptions.dta, clear
-replace shric_desc = "Spinning, weaving, and finishing of textiles" if shric == 50
-replace shric_desc = "Pipeline transport" if shric == 55
-replace shric_desc = "Miscellaneous manufacturing" if shric == 72
-replace shric_desc = "Miscellaneous business services" if shric == 87
-save $tmp/shric_descriptions_amended.dta, replace
 
 /* define prog for getting top 3 shrics at different levels */
 cap prog drop get_top_shrics
@@ -277,7 +300,7 @@ foreach var in $micvars {
 }
 
 /* keep only tileset variables to cut down on file size */
-keep shrid place_name $all_tilevars
+keep shrid place_name $all_tilevars $micvars
 
 /* adjust variable formats for the tileset as needed */
 foreach var of varlist dist* {
@@ -335,11 +358,8 @@ drop if mi(pc11_district_id)
 /* FIXME: EVI needs to be recreated from raw values, not logs */
 /* FIXME: ec13*share and nco2d_cultiv_share should not be weighted by area, but by ec13_emp_all / reconstructed from raw counts */
 /* FIXME: TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
-drop ec13_storage_share
-local sumvars pc11_pca_tot_p pc11_vd_all_hosp pc11_vd_land_src_irr pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_land_ag_tot ec13_emp_all ec13_s*
-local meanvars percent_in_command_area pc11_vd_tar_road pc11_vd_power_agr_sum pc11_vd_power_agr_win evi_delta_k* ndvi_delta_k* gaez_* nco2d_cultiv_share dist_km_* ec13*share
 collapse_save_labels
-collapse (rawsum) `sumvars' (mean) `meanvars' [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
+collapse (rawsum) pc11_pca_tot_p $sumvars (mean) $meanvars (max) $maxvars [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
 collapse_apply_labels
 
 /* merge in minor irrigation census: irrigation by type */
@@ -347,9 +367,6 @@ merge m:1 pc11_state_id pc11_district_id using $iec/canals/clean/mic5_district_d
 
 /* save the full dataset */
 save $iec/rural_platform/district_data.dta, replace
-
-/* FIXME TEMP: gen blank storage share var (needs to be rebuilt, see above FIXME comment) */
-gen ec13_storage_share = .
 
 /* round variables to integers */
 foreach var of varlist dist_* pc11_vd_land* {
