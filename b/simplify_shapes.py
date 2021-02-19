@@ -15,7 +15,7 @@ shrid_out = IEC / 'rural_platform/shrids-simplified.shp'
 
 # read in shapefiles
 dist_shp = gpd.read_file(dist_in)
-#shrid_shp = gpd.read_file(shrid_in)
+shrid_shp = gpd.read_file(shrid_in)
 
 # run the simplifications using topojson package
 #dist_simp = tp.Topology(dist_shp, toposimplify=.1)
