@@ -14,10 +14,10 @@
 #tippecanoe --force -zg --minimum-zoom=5 -o $1 --read-parallel --simplification=10 --coalesce-smallest-as-needed --detect-shared-borders --extend-zooms-if-still-dropping --generate-ids $2 $3 
 
 # create district tileset with zoom range of 5-8
-tippecanoe --force -z9 -Z5 -o $TMP/dist_tile_tmp.mbtiles --read-parallel --simplification=5 --coalesce-smallest-as-needed --detect-shared-borders --generate-ids $IEC/rural_platform/district.geojson
+~/iec/local/share/tippecanoe/tippecanoe --force -z9 -Z5 -o $TMP/dist_tile_tmp.mbtiles --read-parallel --coalesce-smallest-as-needed --detect-shared-borders --generate-ids $IEC/rural_platform/district.geojson
 
 # create shrid tileset with zoom range of 8-10
-tippecanoe --force -z10 -Z9 -o $TMP/shrid_tile_tmp.mbtiles --read-parallel --simplification=20 --coalesce-smallest-as-needed --detect-shared-borders --generate-ids $IEC/rural_platform/shrid.geojson
+~/iec/local/share/tippecanoe/tippecanoe --force -z10 -Z9 -o $TMP/shrid_tile_tmp.mbtiles --read-parallel --simplification=30 --coalesce-smallest-as-needed --detect-shared-borders --generate-ids $IEC/rural_platform/shrid.geojson
 
 # merge tilesets
-tile-join --force -o $TMP/rural_portal_data.mbtiles $TMP/dist_tile_tmp.mbtiles $TMP/shrid_tile_tmp.mbtiles
+~/iec/local/share/tippecanoe/tile-join --force -o $TMP/rural_portal_data.mbtiles $TMP/dist_tile_tmp.mbtiles $TMP/shrid_tile_tmp.mbtiles
