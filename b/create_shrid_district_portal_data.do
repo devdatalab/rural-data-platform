@@ -386,7 +386,7 @@ ren pc11_state_id pc11_s_id
 /* keep just the tileset variables, adding the district-only mic, for
 the smaller mapping dataset. $all_tilevars asserts variable match
 across dist and shrid tilesets */
-keep pc11*id district_name pc11_pca_tot_p $all_tilevars
+keep pc11*id district_name pc11_pca_tot_p sector1 sector2 sector3 $all_tilevars
 
 /* save the tileset */
 compress
