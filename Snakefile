@@ -36,12 +36,22 @@ IEC1=os.path.expanduser(os.environ['IEC1'])
 rule all:
     input:
         f'{TMP}/tileset_push.log',
-        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js',
+        os.path.expanduser('~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'),
         f'{TMP}/canal-command.mbtiles'
+
+# pulling down metadata table from google sheet
+rule pull_gsheet_metadata:
+    input:
+        f'{CODE}/b/pull_gsheet_metadata.py'
+    output:
+        os.path.expanduser(os.path.join(config['globals']['metadata_fn'] + '.pkl')),
+        os.path.expanduser(os.path.join(config['globals']['metadata_fn'] + '.dta'))
+    shell: f'python {CODE}/b/pull_gsheet_metadata.py'
 
 # creation of tabular shrid and district datasets
 rule create_shrid_district_portal_data:
     input:
+        rules.pull_gsheet_metadata.output,
         f'{SHRUG}/data/shrug_pc11_pca.dta',
         f'{SHRUG}/data/shrug_pc11_vd.dta',
         f'{SHRUG}/data/shrug_ec13.dta',
@@ -65,10 +75,11 @@ rule create_shrid_district_portal_data:
 rule create_json_metadata:
     input:
         rules.create_shrid_district_portal_data.output,
+        rules.pull_gsheet_metadata.output,
         f'{CODE}/config/config.yaml',
         f'{CODE}/b/create_json_metadata.py'
     output:
-        '~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'
+        os.path.expanduser('~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js')
     shell: f'python {CODE}/b/create_json_metadata.py'
 
 # simplify shapefiles 
@@ -101,7 +112,7 @@ rule create_vector_tileset:
         rules.shrid_dist_to_geojson.output,
         f'{CODE}/b/create_vector_tileset.sh'
     output: f'{TMP}/rural_portal_data.mbtiles'
-    shell: '{CODE}/b/create_vector_tileset.sh'
+    shell: 'source {CODE}/b/create_vector_tileset.sh'
         
 # export GEOJSON canal command area and line shapes for use in scrolly
 rule prep_canal_command_geojson:
@@ -121,7 +132,7 @@ rule create_command_tileset:
         rules.prep_canal_command_geojson.output,
         f'{CODE}/b/create_command_tileset.sh'
     output: f'{TMP}/canal-command.mbtiles'
-    shell: '{CODE}/b/create_command_tileset.sh'
+    shell: 'source {CODE}/b/create_command_tileset.sh'
 
 # upload of mbtiles to mapbox studio
 rule push_vector_tileset:
