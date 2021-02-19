@@ -15,7 +15,6 @@ TMP = Path(os.environ.get('TMP'))
 
 
 import pandas as pd
-import requests
 import json
 import re
 import warnings
@@ -34,29 +33,11 @@ web_out = Path(os.path.expanduser('~/ddl/ddl-web')) / 'main/static/main/assets/o
 
 # set analysis vars 
 config = process_yaml_config("~/ddl/rural-data-platform/config/config.yaml")
+meta_fn = os.path.expanduser(config['globals']['metadata_fn'] + '.pkl')
 # all_tilevars = config['globals']['micvars'] + config['globals']['shrid_tilevars']
 
-# retrive get the google sheet download endpoint
-gsheet_endpoint = config['globals']['arddp_gsheet']
-
-# pull down google metadata sheet that contains variable specifications
-dict_out = TMP / 'dict_tmp.csv'
-req = requests.get(gsheet_endpoint)
-open(dict_out , 'wb').write(req.content)
-
-# read in the minimally cleaned metadata table and drop blank rows
-meta = pd.read_csv(dict_out, skiprows=1)
-meta = meta.dropna(how = 'all')
-
-# remove explanatory / non-data rows
-meta = meta[meta['varname'].str.contains('^[#]+') == False]
-
-# replace nans with empty strings
-meta.fillna('', inplace=True)
-
-# assert variable name is unique in the table
-if not meta.varname.dropna().is_unique:
-    raise ValueError("input metadata has duplicate entries in the varname column")
+# read in metadata from pickled gsheet dataframe
+meta = pd.read_pickle(meta_fn)
 
 
 ########################
