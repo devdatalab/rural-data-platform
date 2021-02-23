@@ -99,6 +99,7 @@ def get_bounds(varname, vardf):
 
     # convert values to integers if necessary
     if divisor < 1:
+        ubstart = int(ubstart / divisor)
         ub = int(ub / divisor)
         lb = int(lb / divisor)
 
@@ -115,6 +116,15 @@ def get_bounds(varname, vardf):
             if j < 0: j = (j * -1) + 1
             if j > 0: j = j * -1
 
+    # return scales for small divisors
+    if divisor < 1:
+        ub = ub * divisor
+        lb = lb * divisor
+
+    # hardcode skewed binary vars
+    if ub == 0 and lb == 0:
+        ub = 1
+        
     # return upper and lower bounds
     return [ub, lb]
 
