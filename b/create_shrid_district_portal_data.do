@@ -291,13 +291,17 @@ drop _m*
 /* order the merge variables at the end */
 order shrid place_name, first
 
-/* save the full data */
-save $iec/rural_platform/shrid_data.dta, replace
-
 /* generate MIC variable placeholders for easier var manipulation in the web app */
 foreach var in $micvars {
     gen `var' = .
 }
+
+/* convert to percentages */
+convert_to_percentage percent_in_command_area ec13_storage_share mic5_diesel_wells_share ec13_agro_share
+
+/* save the full data */
+compress
+save $iec/rural_platform/shrid_data.dta, replace
 
 /* keep only tileset variables to cut down on file size */
 keep shrid place_name $all_tilevars $micvars
@@ -306,9 +310,6 @@ keep shrid place_name $all_tilevars $micvars
 foreach var of varlist dist* {
   replace `var' = round(`var')
 }
-
-/* convert to percentages */
-convert_to_percentage percent_in_command_area ec13_storage_share mic5_diesel_wells_share ec13_agro_share
 
 /* merge in top shric sectors */
 merge 1:1 shrid using $tmp/shrid_json_shrics
@@ -359,7 +360,8 @@ drop if mi(pc11_district_id)
 /* FIXME: ec13*share and nco2d_cultiv_share should not be weighted by area, but by ec13_emp_all / reconstructed from raw counts */
 /* FIXME: TEMP drop ec13_storage bc (a) needs to be rebuilt and (b) conflicts with ec13_s* shric wildcard in sumvars */
 collapse_save_labels
-collapse (rawsum) pc11_pca_tot_p $sumvars (mean) $meanvars (max) $maxvars [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
+if !mi("$maxvars") collapse (rawsum) pc11_pca_tot_p $sumvars (mean) $meanvars (max) $maxvars [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
+if mi("$maxvars") collapse (rawsum) pc11_pca_tot_p $sumvars (mean) $meanvars [pw=area_laea], by(pc11_state_id pc11_state_name pc11_district_id pc11_district_name) 
 collapse_apply_labels
 
 /* merge in minor irrigation census: irrigation by type */
