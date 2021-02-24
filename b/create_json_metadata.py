@@ -183,6 +183,13 @@ shrid = pd.read_stata(pdata / 'shrid_data_tileset.dta')
 # get district-level data
 dist = pd.read_stata(pdata / 'district_data_tileset.dta')
 
+# define helper function to fill out wildcard regex match pieces to label columns
+def fill_wildcard_across_rows(search, target_col, df):
+    df['tmp'] = df['varname'].str.extract(search, expand=False).fillna('').astype(str)
+    tmpdf = df[df['varname'].str.contains(search, regex=True)]
+    df.loc[df['varname'].str.contains(search, regex=True), target_col] = tmpdf.apply(lambda x: x[target_col].replace(re.search("\[.*\]", x[target_col]).group(0), x['tmp']), axis=1)
+    df.drop('tmp', axis=1, inplace=True)
+
 # assert that all metadata variables are present in the dist and shrid data
 # note that this also expands wildcards in the metadata table
 def check_cols_and_expand(df, cols, meta):
@@ -193,16 +200,21 @@ def check_cols_and_expand(df, cols, meta):
 
     # expand wildcards to match the dataframe
     for wildcard in wildcards:
-        search = re.sub(r'\[.*\]', '.*', wildcard)
+        search = re.sub(r'\[.*\]', '(.*)', wildcard)
         match = df.filter(regex=search).columns
         if len(match) == 0:
             raise ValueError(f'{wildcard} was not found in the dataframe')
         else:
-            # now explode the list and remove string artifacts
+            # explode the list and remove string artifacts
             meta.loc[meta.varname == wildcard, 'varname'] = str(list(match))
             meta = meta.assign(varname=meta['varname'].str.split(',')).explode('varname')
             meta.varname = meta.varname.str.strip("[]").str.replace("\'", "")
 
+            # now replace the wildcarded component
+            fill_wildcard_across_rows(search=search, target_col='lab_short', df=meta)
+            fill_wildcard_across_rows(search=search, target_col='lab_med', df=meta)
+            fill_wildcard_across_rows(search=search, target_col='lab_long', df=meta)
+            
     # now check the non-wildcarded vars
     if not set(cols).issubset(set(df.columns)):
         raise ValueError(f"{' and '.join(set(cols).difference(df.columns))} are not available in the dataframe")
