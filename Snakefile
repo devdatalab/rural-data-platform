@@ -37,8 +37,9 @@ rule all:
     input:
         f'{TMP}/tileset_push.log',
         os.path.expanduser('~/ddl/ddl-web/main/static/main/assets/other/rural_portal_metadata.js'),
-        f'{TMP}/canal-command.mbtiles'
-
+        f'{TMP}/canal-command.mbtiles',
+        f'{TMP}/data_push.log'
+        
 # pulling down metadata table from google sheet
 rule pull_gsheet_metadata:
     input:
@@ -124,7 +125,6 @@ rule prep_canal_command_geojson:
         f'{TMP}/canal_lines.geojson',
         f'{TMP}/command_areas.geojson'
     shell: f'python {CODE}/b/prep_canal_command_geojson.py'
-        
 
 # creation of command area / canal lines tileset for scrollyteller
 rule create_command_tileset:
@@ -143,14 +143,18 @@ rule push_vector_tileset:
     conda: 'config/portal.yaml'
     shell: f'python {CODE}/b/push_vector_tileset.py --file {rules.create_vector_tileset.output} --token {MBTOKEN} > {{log}}'
 
+# zip and upload portal data to dropbox
+rule push_public_data:
+    input:
+        rules.create_shrid_district_portal_data.output,
+        f'{CODE}/b/push_vector_tileset.py',
+    log: f'{TMP}/data_push.log'
+    shell: f'source {CODE}/b/push_public_data.sh > {{log}}'
 
+           
 ########
 # TODO #
 ########
-
-# push_public_data.py - take all atlas data as well as all additional data (e.g. CoC) and:
-#  - zip sensibly
-#  - push to AWS for download by users
 
 # add cost of cultivation data
 # this build file needs to be written (b/create_cost_of_cultivation_portal_data.do)
