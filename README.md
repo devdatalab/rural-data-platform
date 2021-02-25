@@ -1,4 +1,10 @@
 # rural-data-platform
-Rural Development Data Platform associated with the Canals project.
+Agriculture and Rural Development Data Platform (ARDDP) source code. The ARDDP was developed with the support of the World Bank.
 
-[Link to road map here](https://docs.google.com/document/d/1P5gFvjMxbYxlC1FhscRM8Qb1QL4FgOagmL5qAemp6_8/edit#).
+The [ARDDP platform is available here](devdatalab.org/rural-data-portal).
+
+Note: this codebase is not intended to be entirely executable or reproducible, rather by open-sourcing we hope to share our methodologies and increase transparency of the approaches taken in the data processing steps for the ARDDP.
+
+
+
+![DAG](arddp_dag.png)
