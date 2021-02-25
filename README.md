@@ -1,5 +1,5 @@
 # rural-data-platform
-Agriculture and Rural Development Data Platform (ARDDP) source code.
+Agriculture and Rural Development Data Platform (ARDDP) source code. The ARDDP was developed with the support of the World Bank.
 
 The [ARDDP platform is available here](devdatalab.org/rural-data-portal).
 
