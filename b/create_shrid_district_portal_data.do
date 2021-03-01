@@ -43,7 +43,6 @@ replace shric_desc = "Miscellaneous business services" if shric == 87
 save $tmp/shric_descriptions_amended.dta, replace
 
 
-
 /*******************/
 /* HELPER PROGRAMS */
 /*******************/
@@ -166,14 +165,44 @@ merge 1:1 shrid using $shrug/data/shrug_pc11_vd, gen(_m_vd)
 
 /* create total agricultural land variable */
 gen pc11_vd_land_ag_tot = pc11_vd_land_misc_trcp + pc11_vd_land_nt_swn
-label var pc11_vd_land_ag_tot "total agricultural land"
+replace pc11_vd_land_ag_tot = pc11_vd_land_ag_tot / pc11_vd_area
+label var pc11_vd_land_ag_tot "agricultural land as a share of total village area"
 drop pc11_vd_land_misc_trcp pc11_vd_land_nt_swn
 
+/* share of agricultural land irrigated */
+gen irr_share_total = pc11_vd_land_src_irr / pc11_vd_land_ag_tot
+replace irr_share_total = 1 if (pc11_vd_land_src_irr > pc11_vd_land_ag_tot) & !mi(pc11_vd_land_ag_tot) & !mi(pc11_vd_land_src_irr)
+replace irr_share_total = 0 if mi(pc11_vd_land_src_irr) & !mi(pc11_vd_land_ag_tot)
+replace irr_share_total = 0 if pc11_vd_land_src_irr == 0
+label var irr_share_total "Share of agricultural land irrigated"
+
+/* share of agricultural land irrigated by a canal */
+gen irr_share_canal = pc11_vd_land_canal_irr / pc11_vd_land_ag_tot
+replace irr_share_canal = 1 if (pc11_vd_land_canal_irr > pc11_vd_land_ag_tot) & !mi(pc11_vd_land_ag_tot) & !mi(pc11_vd_land_canal_irr)
+replace irr_share_canal = 0 if mi(pc11_vd_land_canal_irr) & !mi(pc11_vd_land_ag_tot)
+replace irr_share_canal = 0 if pc11_vd_land_canal_irr == 0
+lab var irr_share_canal "Share of agricultural land irrigated by canal"
+
+/* share of agricultural land irrigated by a tubewell */
+gen irr_share_tubewell = pc11_vd_land_wl_tw_irr / pc11_vd_land_ag_tot
+replace irr_share_tubewell = 1 if (pc11_vd_land_wl_tw_irr > pc11_vd_land_ag_tot) & !mi(pc11_vd_land_ag_tot) & !mi(pc11_vd_land_wl_tw_irr)
+replace irr_share_tubewell = 0 if mi(pc11_vd_land_wl_tw_irr) & !mi(pc11_vd_land_ag_tot)
+replace irr_share_tubewell = 0 if pc11_vd_land_wl_tw_irr == 0
+lab var irr_share_tubewell "Share of agricultural land irrigated by tubewell"
+
+/* merge in polygon area from shrug spatial */
+merge 1:1 shrid using $shrug/data/shrug_spatial, keepusing(area_laea) gen(_m_tdist)
+
+/* create population density */
+gen popdens_poly = pc11_pca_tot_p / area_laea
+gen popdens_poly_log = log(popdens_poly)
+label var popdens_poly_log "Log population density using shrid polygon"
+
 /* keep shrid and desired variables */
-keep shrid pc11_vd_land_src_irr pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot pc11_pca_tot_p _m_vd 
+keep shrid pc11_vd_land_src_irr irr_share_tot pc11_vd_power_agr_sum pc11_vd_power_agr_win pc11_vd_p_sch pc11_vd_m_sch pc11_vd_s_sch pc11_vd_s_s_sch pc11_vd_tar_road pc11_vd_all_hosp pc11_vd_land_ag_tot pc11_pca_tot_p _m_vd irr_share_tubewell irr_share_canal irr_share_total popdens_poly_log 
 
 /* ec13: Employment in agro-processing and warehousing/storage */
-merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s59 ec13_emp_all) gen(_m_ec13)
+merge 1:1 shrid using $shrug/data/shrug_ec13, keepusing(ec13_s5 ec13_s6 ec13_s7 ec13_s8 ec13_s9 ec13_s10 ec13_s59 ec13_emp_all ec13_emp_services ec13_emp_manuf) gen(_m_ec13)
 
 /* add NIC04 descriptions to labels */
 lab var ec13_s5 "Production, processing and preserving of meat and meat products"
@@ -195,6 +224,35 @@ lab var ec13_agro_share "share of total employment in agroprocessing"
 /* calculate storage and warehouse services as a share of total employment */
 gen ec13_storage_share =  ec13_s59 / ec13_emp_all
 lab var ec13_storage_share "share of total employment in storage and warehousing"
+
+/* secc: merge in age data to get adult population */
+merge 1:1 shrid using $iec/canals/clean/secc_shrid_ed, keepusing(secc_ed_adult_pop age1_5_pop age6_10_pop age11_15_pop age16_20_pop) gen(_m_secc_age)
+
+/* get secc adult share pop */
+gen temp = age16_20_pop / 2
+gen secc_adult_pop = secc_ed_adult_pop + temp
+gen secc_total_pop = secc_adult_pop + age1_5_pop + age6_10_pop + age11_15_pop + temp
+gen secc_adult_pop_share = secc_adult_pop / secc_total_pop
+drop temp age1_5_pop age6_10_pop age11_15_pop age16_20_pop secc_adult_pop secc_total_pop
+
+/* get employment as shares of adult population */
+gen pc11_adult_pop = pc11_pca_tot_p * secc_adult_pop_share
+label var pc11_adult_pop "Adult population, pc11 total * secc adult share"
+
+/* total employment */
+gen ec13_emp_pc = ec13_emp_all / pc11_adult_pop
+replace ec13_emp_pc = . if ec13_emp_pc > 1
+label var ec13_emp_pc "Total employment per adult population"
+
+/* services employment */
+gen ec13_emp_services_pc = ec13_emp_serv / pc11_adult_pop
+replace ec13_emp_services_pc = . if ec13_emp_services_pc > 1
+label var ec13_emp_services_pc "Services employment per adult population"
+
+/* manufacturing employment */
+gen ec13_emp_manuf_pc = ec13_emp_manuf / pc11_adult_pop
+replace ec13_emp_manuf_pc = . if ec13_emp_services_pc > 1
+label var ec13_emp_manuf_pc "Manufacturing employment per adult population"
 
 /* secc: Share of workers/households working in agriculture */
 merge 1:1 shrid using $shrug/data/shrug_secc, keepusing(nco2d_cultiv_share) gen(_m_secc)
@@ -282,6 +340,9 @@ lab var dist_km_command_area "distance to nearest command area (km)"
 ren shrid_comm_overlap percent_in_command_area
 lab var percent_in_command_area "percent of village area inside command area"
 
+/* replace distance to command area boundary with 0 if it is within the command area */
+replace dist_km_command_area = 0 if comm_dummy == 1 
+
 /* bring in shrid names to be passed into the web app */
 merge 1:1 shrid using $shrug/keys/shrug_names, keepusing(place_name) nogen
 
@@ -312,8 +373,8 @@ foreach var of varlist dist* {
 }
 
 /* merge in top shric sectors */
-merge 1:1 shrid using $tmp/shrid_json_shrics
-drop _merge
+// merge 1:1 shrid using $tmp/shrid_json_shrics
+// drop _merge
 
 /* save just the tileset variables for the smaller mapping dataset */
 compress
@@ -378,8 +439,8 @@ foreach var of varlist dist_* pc11_vd_land* {
 /* merge in top shric sectors */
 ren pc11_state_name state_name
 ren pc11_district_name district_name
-merge 1:1 state_name district_name using $tmp/district_json_shrics, keep(master match)
-drop _merge
+// merge 1:1 state_name district_name using $tmp/district_json_shrics, keep(master match)
+//drop _merge
 
 /* rename district variables for the web app */
 ren pc11_district_id pc11_d_id
@@ -388,7 +449,7 @@ ren pc11_state_id pc11_s_id
 /* keep just the tileset variables, adding the district-only mic, for
 the smaller mapping dataset. $all_tilevars asserts variable match
 across dist and shrid tilesets */
-keep pc11*id district_name pc11_pca_tot_p sector1 sector2 sector3 $all_tilevars
+keep pc11*id district_name pc11_pca_tot_p $all_tilevars //sector1 sector2 sector3
 
 /* save the tileset */
 compress
