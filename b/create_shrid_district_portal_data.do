@@ -364,8 +364,8 @@ convert_to_percentage percent_in_command_area ec13_storage_share mic5_diesel_wel
 compress
 save $iec/rural_platform/shrid_data.dta, replace
 
-/* keep only tileset variables to cut down on file size */
-keep shrid place_name $all_tilevars $micvars
+/* keep only tileset variables to cut down on file size - note that pop is required for the popup in the web app */
+keep shrid place_name pc11_pca_tot_p $all_tilevars $micvars
 
 /* adjust variable formats for the tileset as needed */
 foreach var of varlist dist* {
