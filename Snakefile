@@ -48,11 +48,21 @@ rule pull_gsheet_metadata:
         os.path.expanduser(os.path.join(config['globals']['metadata_fn'] + '.pkl')),
         os.path.expanduser(os.path.join(config['globals']['metadata_fn'] + '.dta'))
     shell: f'python {CODE}/b/pull_gsheet_metadata.py'
+        
+# calculate top 3 shric sectors for district and shrid level
+rule create_top_shrics:
+    input:
+        f'{CODE}/b/create_top_shrics.do'
+    output:
+        f'{TMP}/shrid_json_shrics.dta',
+        f'{TMP}/district_json_shrics.dta'
+    shell: f'stata -b {CODE}/b/create_top_shrics.do'
 
 # creation of tabular shrid and district datasets
 rule create_shrid_district_portal_data:
     input:
         rules.pull_gsheet_metadata.output,
+        rules.create_top_shrics.output,
         f'{SHRUG}/data/shrug_pc11_pca.dta',
         f'{SHRUG}/data/shrug_pc11_vd.dta',
         f'{SHRUG}/data/shrug_ec13.dta',
