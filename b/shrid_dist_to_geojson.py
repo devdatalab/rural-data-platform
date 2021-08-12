@@ -3,20 +3,17 @@
 # depends on py_spatial env (run from snakemake)
 
 
-# FIXME: automate this so it works in batch mode, not just interactive shells
-# (with ddl/config/.python_profile.py)
-
 ############
 # Preamble #
 ############
 
-# hack to get tools imported...
+# imports
 import sys, os, importlib
-sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
-from geospatialtools.utils import import_vector_data
-
 import geopandas as gpd
 import pandas as pd
+
+# ddlpy imports
+from ddlpy.geospatialtools.utils import import_vector_data
 
 def import_tabular_data(fp):
     """

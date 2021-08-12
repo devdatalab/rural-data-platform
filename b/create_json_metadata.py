@@ -1,24 +1,17 @@
 # prepare JSON blob with specific shape to automate the
 # construction of the navbar in the web app. 
 
-# TODO:
-#  - ensure config settings are being input correctly
-#  - check globals in batch mode
-
-
-# FIXME: automate this so it works in batch mode, not just interactive shells
-# (with ddl/config/.python_profile.py)
+# imports
 import sys, os, importlib
 from pathlib import Path
-sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
-TMP = Path(os.environ.get('TMP'))
-
-
 import pandas as pd
 import json
 import re
 import warnings
-from tools import process_yaml_config
+
+# ddlpy imports
+from ddlpy.utils.tools import process_yaml_config
+from ddlpy.utils.constants import TMP
 
 # FIXME PULL FROM CONFIG.YAML INSTEAD: paths hack
 pdata = Path(os.path.expanduser('~/iec/rural_platform'))

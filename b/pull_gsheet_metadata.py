@@ -1,14 +1,12 @@
-# FIXME: automate this so it works in batch mode, not just interactive shells
-# (with ddl/config/.python_profile.py)
+# imports
 import sys, os, importlib
-sys.path.insert(0, os.path.expanduser("~/ddl/tools/py"))
 from pathlib import Path
-TMP = Path(os.path.expanduser(os.environ['TMP']))
-
-# preamble
 import pandas as pd
 import requests
-from tools import process_yaml_config
+
+# ddlpy imports
+from ddlpy.utils.tools import process_yaml_config
+from ddlpy.utils.constants import TMP
 
 # settings from config.yaml
 config = process_yaml_config("~/ddl/rural-data-platform/config/config.yaml")
