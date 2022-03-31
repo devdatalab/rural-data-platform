@@ -8,7 +8,7 @@ IEC1 = Path(os.environ.get('IEC1'))
 IEC = Path(os.environ.get('IEC'))
 
 # set paths
-dist_in = IEC1 / 'gis/pc11/pc11-district-simplified.shp'
+dist_in = IEC1 / 'gis/pc11/mlinfo/pc11-district-simplified.shp'
 shrid_in = IEC1 / 'gis/shrug/shrids_corrected.shp'
 dist_out = IEC / 'rural_platform/districts-simplified.shp'
 shrid_out = IEC / 'rural_platform/shrids-simplified.shp'
